@@ -1,0 +1,194 @@
+
+# this is suitable for bash4+ only...
+# FIXME: fallback implementations for non-bash and bash3-
+
+
+function envvar_unset {
+	[ x"${!1-unset}" = x"unset" ]
+}
+
+function envvar_unset_or_empty {
+	[ x"${!1:-unset_or_empty}" = x"unset_or_empty" ]
+}
+
+function envvar_set {
+	[ x"${!1+set}" = x"set" ]
+}
+
+function envvar_set_or_nonempty {
+	[ x"${!1:+set_or_nonempty}" = x"set_or_nonempty" ]
+}
+
+function parse-path {
+	local delim=:
+	if [ x"$1" = x"-d" ]; then
+		delim="$2"
+		shift 2
+	fi
+	local old_IFS="$IFS"
+	IFS="$delim"
+	eval "$1=("$2")"
+	local rc="$?"
+	IFS="$old_IFS"
+	return "$rc"
+}
+
+function append-path {
+	local delim=:
+	if [ x"$1" = x"-d" ]; then
+		delim="$2"
+		shift 2
+	fi
+	local have_extglob=$?
+	if [ $have_extglob != 0 ]; then
+		shopt -s extglob
+	fi
+	local p="${2//+(\/)//}"
+	if [ $have_extglob != 0 ]; then
+		shopt -u extglob
+	fi
+	case "${!1}" in
+		*"$delim$p$delim"*|"$p$delim"*|*"$delim$p"|"$p")
+			;;
+		*)
+			#echo "$1+='${!1:+:}$p'"
+			eval "$1+='${!1:+$delim}$p'"
+			export $1
+			#echo "$1=${!1}"
+			;;
+	esac
+}
+
+function prepend-path {
+	local delim=:
+	if [ x"$1" = x"-d" ]; then
+		delim="$2"
+		shift 2
+	fi
+	local have_extglob=$?
+	if [ $have_extglob != 0 ]; then
+		shopt -s extglob
+	fi
+	local p="${2//+(\/)//}"
+	if [ $have_extglob != 0 ]; then
+		shopt -u extglob
+	fi
+	case "${!1}" in
+		*"$delim$p$delim"*|"$p$delim"*|*"$delim$p"|"$p")
+			;;
+		*)
+			#echo "$1='$p${!1:+:${!1}}'"
+			eval "$1='$p${!1:+$delim${!1}}'"
+			export $1
+			#echo "$1=${!1}"
+			;;
+	esac
+}
+
+
+declare -A type_{envvar,sep,loc,mod}
+
+function has_program {
+	type "$1" > /dev/null 2>&1
+}
+
+type_envvar[program]=PATH
+type_sep[program]=:
+type_loc[program]=bin
+type_mod[program]=prepend
+
+function has_tcl_package {
+	#cat <<-EOF
+	#has_program tclsh && tclsh <(echo 'exit [catch {package require '"$1"'}]')
+	#EOF
+	has_program tclsh && tclsh <(echo 'exit [catch {package require '"$1"'}]')
+}
+
+type_envvar[tcl_package]=TCLLIBPATH
+type_sep[tcl_package]=" "
+type_loc[tcl_package]=lib/tcl
+type_mod[tcl_package]=prepend
+
+
+function resolve_necessary {
+	local type="$1"
+	shift
+	local object="$1"
+	shift
+	if ! has_"$type" "$object"; then
+		for repo in "${syzix_repos[@]}"; do
+			for arch in "${syzix_archs[@]}"; do
+				for pkgname; do
+					local v="${type_envvar[$type]}"
+					local orig="${!v}"
+					"${type_mod[$type]}"-path -d "${type_sep[$type]}" "${type_envvar[$type]}" "$repo/$arch/$pkgname/default/${type_loc[$type]}"
+					if has_"$type" "$object"; then
+						return 0
+					fi
+					eval "${type_envvar[$type]}"'="$orig"'
+				done
+			done
+		done
+		echo "Error: Unable to find necessary $type: $object"
+		return 1
+	fi
+	return 0
+}
+
+
+
+
+
+NATIVE_MACH="${NATIVE_MACH:-$(uname -m)}"
+export NATIVE_MACH
+
+NATIVE_KERNEL="${NATIVE_KERNEL:-$(uname -s)}"
+NATIVE_KERNEL="${NATIVE_KERNEL,,}"
+export NATIVE_KERNEL
+
+NATIVE_ARCH="${NATIVE_ARCH:-$NATIVE_MACH-$NATIVE_KERNEL}"
+export NATIVE_ARCH
+
+SHORT_HOSTNAME="${SHORT_HOSTNAME:-${HOSTNAME%%.*}}"
+export SHORT_HOSTNAME
+
+SW="${SW:-sw}"
+
+
+if envvar_unset_or_empty SYZIX_ARCHS; then
+	append-path SYZIX_ARCHS "noarch"
+	append-path SYZIX_ARCHS "$NATIVE_ARCH"
+fi
+
+parse-path syzix_archs "$SYZIX_ARCHS"
+
+
+if envvar_unset_or_empty SYZIX_REPO_BASES; then
+	append-path SYZIX_REPO_BASES "syzix"
+	# FIXME: eventually, split the "syzix" repo into a few main repos...
+	#append-path SYZIX_REPO_BASES "syzix/base"
+	#append-path SYZIX_REPO_BASES "syzix/testing"
+	#append-path SYZIX_REPO_BASES "syzix/unfree"
+	#append-path SYZIX_REPO_BASES "syzix/extra"
+fi
+
+parse-path syzix_repo_bases "$SYZIX_REPO_BASES"
+
+
+
+if envvar_unset_or_empty SYZIX_REPOS; then
+	for i in "${syzix_repo_bases[@]}"; do
+		append-path SYZIX_REPOS "/$HOME/$SW/host/$SHORT_HOSTNAME/$i"
+		append-path SYZIX_REPOS "/$HOME/$SW/$i"
+		append-path SYZIX_REPOS "/$SW/host/$SHORT_HOSTNAME/$i"
+		append-path SYZIX_REPOS "/$SW/$i"
+	done
+	parse-path syzix_repos "$SYZIX_REPOS"
+	for i in "${syzix_repos[@]}"; do
+		append-path SYZIX_REPOS "$i"/hostdep
+	done
+fi
+
+parse-path syzix_repos "$SYZIX_REPOS"
+
+

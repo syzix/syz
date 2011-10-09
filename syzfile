@@ -1,0 +1,31 @@
+#%Module
+
+# These prereqs don't (yet) guarantee that these modules won't be unloaded.
+# One idea would be when a prereq is done, set a special envvar which (somehow)
+# tells that module that it's depended on by something.  Aha, a counter which is
+# incremented each time a module is prereq'd.  Then, on load, counter decremented.
+# Then, module can only be unloaded if its counter is non-existant or 0.  Circular
+# prereq dep chains aren't possible, so circular structures wrecking reference
+# counters isn't a concern.
+
+# Well, better than a counter would be a colon-separated list of the modules
+# that depend on it.  Then the error message can be more useful.
+
+#prereq modext
+#package require modext
+
+description {
+
+	bin-dir bin
+
+	# Currently soft-prereq doesn't include an implicit prereq, when the above
+	# behaviour is fixed, it probably should.
+	soft-prereq modules
+	prereq modules
+
+	soft-prereq modext
+	prereq modext
+
+	cannot-unload
+}
+

@@ -1,0 +1,20 @@
+
+# The idea here is that this will undo what's done by syzzyup.
+# Then the syz syzfile will call legacy-script to do syzzyup at load,
+# and syzzydown at unload.
+# Then this can facilitate using "syz swap" to change syz versions,
+# including to a new/different implementation of the base 'syz' shell function.
+
+# But it actually turns out that there's nothing to undo.
+# - $PATH will be updated by the syzfile itself
+# - $TCLLIBPATH is a modext thing, handled by that package's syzfile
+# - $MODULEPATH shouldn't ever have the base repos removed from it
+# - $LOADEDMODULES should be initialised if it's not present, but never fiddled with after that
+# - Even the 'syz' shell function could be unset (in preparation for the incoming definition
+#   in the new syz version that's about to be loaded), but what's the point? - when the new shell
+#   function is defined, it will simply override the old one.  Leaving the 'syz' function alone
+#   increases the chances of things continuing to work in the face of errors mid-way, etc.
+
+# So, should this file stay, in case something comes up in the future?
+# Or should it be turfed...??
+

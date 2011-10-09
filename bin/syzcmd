@@ -1,0 +1,4 @@
+#!/bin/bash
+# FIXME: use #!/shbang bash
+
+exec modulecmd "$@"
