@@ -7,7 +7,8 @@
 #echo $BASH_SOURCE
 #. syzlib
 
-. /sw/syzix/noarch/syz/0.1/bin/syzlib || { echo "syzzyup: Error: cannot source syzlib" 1>&2 ; exit 1; }
+{ [ -e /sw/syzix/noarch/syz/0.1/bin/syzlib ] && . /sw/syzix/noarch/syz/0.1/bin/syzlib ; } || { [ -e /sw/syzix/hostdep/noarch/syz/0.1/bin/syzlib ] && . /sw/syzix/hostdep/noarch/syz/0.1/bin/syzlib ; } || { echo "syzzyup: Error: cannot source syzlib" 1>&2 ; exit 1; }
+
 
 
 #NATIVE_MACH="${NATIVE_MACH:-$(uname -m)}"
