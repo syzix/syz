@@ -7,7 +7,9 @@
 #echo $BASH_SOURCE
 #. syzlib
 
-{ [ -e /sw/syzix/noarch/syz/0.1/bin/syzlib ] && . /sw/syzix/noarch/syz/0.1/bin/syzlib ; } || { [ -e /sw/syzix/hostdep/noarch/syz/0.1/bin/syzlib ] && . /sw/syzix/hostdep/noarch/syz/0.1/bin/syzlib ; } || { echo "syzzyup: Error: cannot source syzlib" 1>&2 ; exit 1; }
+syz_version=0.1
+
+{ [ -e /sw/syzix/noarch/syz/$syz_version/bin/syzlib ] && . /sw/syzix/noarch/syz/$syz_version/bin/syzlib ; } || { [ -e /sw/syzix/hostdep/noarch/syz/$syz_version/bin/syzlib ] && . /sw/syzix/hostdep/noarch/syz/$syz_version/bin/syzlib ; } || { echo "syzzyup: Error: cannot source syzlib" 1>&2 ; exit 1; }
 
 
 
@@ -290,6 +292,6 @@ fi
 # FIXME: once syzzyup is called by the syz syzfile (using legacy-script) (to
 # handle using "syz swap" to change syz versions), then this must only be done
 # when syzzyup is NOT being called in this case.
-#syz ensure syz/0.1
-syz load syz/0.1
+#syz ensure syz/$syz_version
+syz load syz/$syz_version
 
