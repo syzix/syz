@@ -25,7 +25,9 @@
 #echo $BASH_SOURCE
 #. syzlib
 
-syz_version=0.1.1
+# FIXME: figure this out automatically
+#syz_version=0.1.1
+syz_version=devel
 
 { [ -e /sw/syzix/noarch/syz/$syz_version/bin/syzlib ] && . /sw/syzix/noarch/syz/$syz_version/bin/syzlib ; } || { [ -e /sw/syzix/hostdep/noarch/syz/$syz_version/bin/syzlib ] && . /sw/syzix/hostdep/noarch/syz/$syz_version/bin/syzlib ; } || { echo "syzzyup: Error: cannot source syzlib" 1>&2 ; exit 1; }
 
