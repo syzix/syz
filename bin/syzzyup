@@ -239,6 +239,7 @@ syz_version=devel
 
 resolve_necessary program modulecmd modules || return 1
 resolve_necessary program syzcmd syz || return 1
+resolve_necessary program shwrapnel shwrapnel || return 1
 resolve_necessary program tclsh tcl || return 1
 
 resolve_necessary tcl_package modext modext || return 1
