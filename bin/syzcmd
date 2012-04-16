@@ -42,6 +42,18 @@ elif [ "$2" = "cd" ]; then
 		echo "syzcmd: Error: \"$3\" not found" 1>&2
 		exit 1
 	fi
+	if [ $# -eq 4 ]; then
+		basedir="$basedir/$4"
+		if [ ! -d "$basedir" ]; then
+			if [ ! -e "$basedir" ]; then
+				echo "syzcmd: Error: \"$basedir\" not found" 1>&2
+				exit 1
+			else
+				echo "syzcmd: Error: \"$basedir\" not a directory" 1>&2
+				exit 1
+			fi
+		fi
+	fi
 	echo "cd $basedir"
 
 else
