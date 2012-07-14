@@ -24,7 +24,7 @@ shwrapnel set_real_cmd modulecmd
 
 # FIXME: handle any options that are given (eg. -t, -v, -s, ...)
 if [ "$2" = "basedir" ]; then
-	shwrapnel run "$1" show "$3" 2>&1 | sed -ne 's,^setenv\s\+[A-Za-z0-9_]\+_BASE\s\+,echo ,p'
+	shwrapnel run "$1" show "$3" 2>&1 | sed -n -e 's,$,;,' -e 's,^setenv\s\+[A-Za-z0-9_]\+_BASE\s\+,echo ,p'
 
 elif [ "$2" = "cd" ]; then
 	if [ $# -eq 2 ]; then
