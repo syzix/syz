@@ -1,5 +1,5 @@
 
-# Copyright (C) 2012 Kevin Pulo.
+# Copyright (C) 2009,2012 Australian National University.
 #
 # This file is part of syz.
 # 
@@ -16,62 +16,125 @@
 # You should have received a copy of the GNU General Public License
 # along with syz.  If not, see <http://www.gnu.org/licenses/>.
 
-
-# this is suitable for bash4+ only...
-
-# plus make this safe to rerun at any time - reruns *must* *do* *NOTHING*
-# then /shbang can run this, just in case (maybe)
-
-#echo $BASH_SOURCE
-#. syzlib
-
-# FIXME: figure this out automatically
-#syz_version=0.1.1
-syz_version=devel
-
-{ [ -e /sw/syzix/noarch/syz/$syz_version/bin/syzlib ] && . /sw/syzix/noarch/syz/$syz_version/bin/syzlib ; } || { [ -e /sw/syzix/hostdep/noarch/syz/$syz_version/bin/syzlib ] && . /sw/syzix/hostdep/noarch/syz/$syz_version/bin/syzlib ; } || { echo "syzzyup: Error: cannot source syzlib" 1>&2 ; exit 1; }
-
-
-
-
-resolve_necessary program modulecmd modules || return 1
-resolve_necessary program syzcmd syz || return 1
-resolve_necessary program shwrapnel shwrapnel || return 1
-resolve_necessary program tclsh tcl || return 1
-
-resolve_necessary tcl_package modext modext || return 1
-
-if envvar_unset LOADEDMODULES; then
-	LOADEDMODULES=""
-	export LOADEDMODULES
-fi
+################################################################################
+##                                                                            ##
+##                             LORD OF THE SHELLS                             ##
+##                                                                            ##
+##                        One Script to rule them all,                        ##
+##                          One Script to find them,                          ##
+##                        One Script to bring them all                        ##
+##                       and in the darkness bind them.                       ##
+##                                                                            ##
+##                                                                            ##
+##          Go to the end to change the sh/csh destination scripts.           ##
+##                                                                            ##
+##          v0.1, Kevin Pulo, kevin.pulo@anu.edu.au, kev@pulo.com.au          ##
+##                    Feedback/improvements most welcome.                     ##
+##                                                                            ##
+################################################################################
 
 
-if envvar_unset MODULEPATH; then
-	MODULEPATH=""
-	export MODULEPATH
-fi
+# Get rid of default aliases that we don't want (but might want to get back later, if they help somewhere).
+# zsh:
+alias run-help=: ; unalias run-help
+alias which-command=: ; unalias which-command
+# ksh:
+# Don't forge that ksh doesn't EVER seem to use aliases non-interactively anyway.
+alias 2d=: ; unalias 2d
+alias autoload=: ; unalias autoload
+alias command=: ; unalias command
+alias fc=: ; unalias fc
+alias float=: ; unalias float
+alias functions=: ; unalias functions
+alias hash=: ; unalias hash
+alias history=: ; unalias history
+alias integer=: ; unalias integer
+alias nameref=: ; unalias nameref
+alias nohup=: ; unalias nohup
+alias r=: ; unalias r
+alias redirect=: ; unalias redirect
+alias source=: ; unalias source
+alias stop=: ; unalias stop
+alias suspend=: ; unalias suspend
+alias times=: ; unalias times
+alias type=: ; unalias type
 
-for repo in "${syzix_repos[@]}"; do
-	for arch in "${syzix_archs[@]}"; do
-		i="$repo/$arch"
-		if [ -d "$i" -a -r "$i" -a -x "$i" ]; then
-			append-path MODULEPATH "$i/.sf"
-		fi
-	done
-done
 
-syz() { eval `syzcmd bash "$@" ; echo local rc=$?`; return $rc; }
-export -f syz
+# bash won't actually use aliases non-interactively without shopt -s expand_aliases
+alias shopt=:
+alias true=:
+alias shopt true > /dev/null
+shopt -s expand_aliases 2>/dev/null
+unalias shopt
 
-if envvar_set USE_TRADITIONAL_MODULE_COMMAND; then
-	module() { syz "$@"; }
-	export -f module
-fi
+alias setenv=:
 
-# FIXME: once syzzyup is called by the syz syzfile (using legacy-script) (to
-# handle using "syz swap" to change syz versions), then this must only be done
-# when syzzyup is NOT being called in this case.
-#syz ensure syz/$syz_version
-syz load syz/$syz_version
+# Now we can use setenv to set csh-only variables, as long as we prefix with eval and keep things simple
+eval setenv SHELLSTYLE csh
+
+#echo "This thing is $SHELLSTYLE"
+#echo "START ALIASES"
+#alias
+#echo "END ALIASES"
+
+unalias setenv
+
+# I don't think there's any harm in leaving this aliased.
+# It should help in any shell that doesn't have true as a builtin, save it from going out to disk to get /bin/true.
+#unalias true
+
+#echo "This thing is $SHELLSTYLE"
+
+alias export=export
+alias export true > /dev/null
+alias eval=eval
+alias eval true > /dev/null
+alias SHELLSTYLE=sh true > /dev/null
+
+#echo "START ALIASES"
+#alias
+#echo "END ALIASES"
+
+SHELLSTYLE=sh
+export SHELLSTYLE
+
+unalias export
+unalias eval
+unalias SHELLSTYLE=sh 2> /dev/null
+unalias SHELLSTYLE
+
+
+#echo "This thing is $SHELLSTYLE"
+
+
+alias type=type
+alias type true > /dev/null
+
+# ash is a funny one, both type commands are necessary to get the source alias to work.
+# Even then it doesn't always work (it does in an empty environment (env -i), but my
+# default env has something in there that sets it off...)
+type source > /dev/null
+alias source=.
+type source > /dev/null
+
+# zsh complains, hence the 2>/dev/null
+unalias type 2>/dev/null
+
+
+#echo "START ALIASES"
+#alias
+#echo "END ALIASES"
+
+
+# ash has no source, but sometimes it also doesn't seem to like using the about source alias.
+# not yet sure why or when, but we try to handle it here with a manual fallback to using .
+# there's still a "source: not found" error in this case, which i haven't been able to suppress.
+
+# To change where this goes, change both of the "./do-main" below.
+
+# Pity there's no equivalent of $BASH_SOURCE in csh.
+
+source "/sw/syzix/hostdep/noarch/syz/default/bin/syzzyup.$SHELLSTYLE" || . "/sw/syzix/hostdep/noarch/syz/default/bin/syzzyup.$SHELLSTYLE"
+
+# Weeeeeeeeeeeee!!!!
 
