@@ -61,7 +61,7 @@ for repo in "${syzix_repos[@]}"; do
 	done
 done
 
-syz() { eval `syzcmd bash "$@"`; }
+syz() { eval `syzcmd bash "$@" ; echo local rc=$?`; return $rc; }
 export -f syz
 
 if envvar_set USE_TRADITIONAL_MODULE_COMMAND; then
