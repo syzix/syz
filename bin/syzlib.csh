@@ -20,6 +20,7 @@
 
 # Q: Who feels like porting the rest of this to the inferior shell...?
 # A: Not me.
+# A: http://www.faqs.org/faqs/unix-faq/shell/csh-whynot/
 
 echo "FIXME: syzlib.csh not fully implemented"
 
