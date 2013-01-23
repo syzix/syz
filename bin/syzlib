@@ -188,6 +188,7 @@ if envvar_unset_or_empty SYZIX_REPO_BASES; then
 	#append-path SYZIX_REPO_BASES "syzix/testing"
 	#append-path SYZIX_REPO_BASES "syzix/unfree"
 	#append-path SYZIX_REPO_BASES "syzix/extra"
+	append-path SYZIX_REPO_BASES "nix"
 fi
 
 parse-path syzix_repo_bases "$SYZIX_REPO_BASES"
