@@ -1,0 +1,46 @@
+#!/bin/bash
+# Requires bash 4+
+
+. syzlib || { echo "$0: Error: cannot source syzlib" 1>&2 ; exit 1; }
+
+if [ $# -eq 0 ]; then
+	echo "Usage: $0 [ <path> ... ]"
+	exit 0
+fi
+
+function process_tree {
+	local i
+	for i; do
+		if [ -d "$i" -a -r "$i" -a -x "$i" ]; then
+			echo "==> $i <==" 1>&2
+			cd "$i"
+			mkdir -p .sf
+			for j in */*/syzfile; do
+				j="${j%/syzfile}"
+				pkgname="${j%%/*}"
+				version="${j##*/}"
+				mkdir -p .sf/"$pkgname"
+				if [ "$version" = default ]; then
+					target="$(readlink "$pkgname/$version")"
+					echo -ne "#%Module1.0\nset ModulesVersion "\""$target"\""\n" > .sf/"$pkgname"/.version
+					echo "Set $pkgname default to $target"
+				else
+					ln -svf ../../"$j"/syzfile .sf/"$pkgname/$version"
+				fi
+			done
+			echo "" 1>&2
+		fi
+	done
+}
+
+if [ $# -eq 0 ]; then
+	for repo in "${syzix_repos[@]}"; do
+		for arch in "${syzix_archs[@]}"; do
+			process_tree "$repo/$arch"
+		done
+	done
+else
+	process_tree "$@"
+fi
+
+
