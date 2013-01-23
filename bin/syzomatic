@@ -1,0 +1,230 @@
+#!/bin/bash
+# Requires bash 4+ (associative arrays)
+
+if [ $# -eq 0 ]; then
+	echo "Usage: $0 [options] <path> [ <path> ... ]"
+	echo "Options:"
+	echo " -f   Force output of syzfile, even if it already exists"
+	echo " -    Output to stdout"
+	echo " -u   Update existing syzfiles (not yet implemented)"
+	exit 0
+fi
+
+force=n
+stdout=n
+update=n
+list=()
+for i; do
+	case "$i" in
+		(-f) force=y ;;
+		(-)  stdout=y ;;
+		(-u) update=y ;;
+		(*)  list+=("$i") ;;
+	esac
+done
+
+shopt -s extglob
+
+misinstall_prefix='?(usr/|opt/?(+([^/])/))'
+
+include_pattern="${misinstall_prefix}include"
+python_pattern="${misinstall_prefix}lib/python+([0-9]).+([0-9])/site-packages"
+locale_pattern="${misinstall_prefix}locale"
+man_pattern="${misinstall_prefix}?(share/)man"
+kmod_pattern="${misinstall_prefix}lib/modules"
+modules_pattern="${misinstall_prefix}@(modulefiles|mf|syzfiles|sf)"
+perl5_pattern="${misinstall_prefix}lib/perl5/@(site|vendor)_perl"
+tcllib_pattern="${misinstall_prefix}lib/tcl*"
+
+declare -A prefix args
+
+function do_search {
+	local i="$1"
+	prefix=()
+	args=()
+	deps=()
+	while read -d '' f; do
+		f="${f#$i/}"
+		d="${f%/*}"
+		#echo "$f" 1>&2
+		case "$f" in
+			# "Binaries", ie. programs that can be run, or scripts that can be sourced.
+			(${misinstall_prefix}bin/+([^/]))
+				args[bin,$d]=""
+				;;
+
+			# "Include files", ie. C/C++/Fortran header files that can be #include'd/include'd.
+			(${include_pattern}/*)
+				args[include,"${f%${f#$include_pattern}}"]="-languages c,cxx,f"
+				;;
+
+			# Python modules.
+			(${python_pattern}/*)
+				args[include,"${f%${f#$python_pattern}}"]="-language python"
+				;;
+
+			# Perl5 modules.
+			(${perl5_pattern}/*)
+				# Is this right?  Under this dir always seems to be the perl version...
+				args[include,"${f%${f#$perl5_pattern}}"]="-language perl5"
+				;;
+
+			# TCL modules.  
+			(${tcllib_pattern}/tclIndex)
+				# Is this right?
+				args[include,"$d"]="-language tcl"
+				prefix[include,"$d"]="#"
+				;;
+
+			# FIXME: Haskell modules?!
+
+			# pkgconfig description files, used by the pkg-config tool.
+			(${misinstall_prefix}lib/pkgconfig/+([^/]).pc)
+				args[pkgconfig,$d]=""
+				;;
+
+			# "Libraries".  Only canonical form in the base "lib" dir are recognised.
+			(${misinstall_prefix}lib?(32|64)/lib+([^/]).@(la|@(a|so)*(.+([0-9A-Za-z_-]))))
+				args[lib,$d]=""
+				;;
+
+			# "Linux kernel modules".
+			# Might require a wrapper around modprobe, insmod, depmod, etc.
+			(${kmod_pattern}/*)
+				prefix[kmod,"${f%${f#$kmod_pattern}}"]="#"
+				args[kmod,"${f%${f#$kmod_pattern}}"]=""
+				;;
+
+			# "Libexec files".  Arch-specific supporting files for packages.  Almost by definition we should leave everything here alone.
+			(${misinstall_prefix}libexec/*)
+				# Deliberately empty.
+				;;
+
+			# "Locale files".  .mo binary message catalogues compiled by msgfmt and used by glibc and/or gettext(?).
+			# Requires setting $LOCPATH.
+			(${locale_pattern}/@(C|POSIX|[a-z][a-z]?(_[A-Z][A-Z])?(.+([A-Z0-9_-]))?(@+([a-z])))/*)
+				prefix[locale,"${f%${f#$locale_pattern}}"]="#"
+				args[locale,"${f%${f#$locale_pattern}}"]=""
+				;;
+
+			# "Info files", as used by the GNU info program.
+			(${misinstall_prefix}?(share/)info/+([^/]))
+				args[info,$d]=""
+				;;
+
+			# "Manpages".
+			(${man_pattern}/?(@(C|POSIX|[a-z][a-z]?(_[A-Z][A-Z])?(.+([A-Z0-9_-]))?(@+([a-z])))/)@(man|cat)+([0-9A-Za-z])/+([^/]))
+				args[man,"${f%${f#$man_pattern}}"]=""
+				;;
+
+			# Hrmmm...  This stuff might be useful somehow?  For finding deps?  Or compilation flags.
+			(nix-support/*)
+				;;
+
+			# "Nix expressions".
+			# Needs to set $NIX_PATH.
+			(nixpkgs/*)
+				prefix[nix,nixpkgs]="#"
+				args[nix,nixpkgs]=""
+				;;
+
+			# "Superuser Binaries", ie. programs that can be run, or scripts that can be sourced.
+			# Intended for root only, but to hell with that.
+			(${misinstall_prefix}sbin/+([^/]))
+				args[bin,$d]=""
+				;;
+
+			# "Modulefiles".
+			# Needs to set $MODULEPATH.
+			(${modules_pattern}/*)
+				args[modules,"${f%${f#$modules_pattern}}"]=""
+				;;
+
+			# "SoftWare". ie. a recursive tree of Syzix-arranged software installs.
+			(sw/.sf/*)
+				prefix[syzix,sw]="#"
+				args[syzix,sw]=""
+				;;
+
+			# ???
+			(${misinstall_prefix}share/X11/app-defaults/*)
+				;;
+			(${misinstall_prefix}share/X11/locale/*)
+				;;
+			# TeX???
+			(${misinstall_prefix}?(share/)texmf?(-config|-dist|-var)/*)
+				;;
+			# "TeXLive packages"???
+			(${misinstall_prefix}?(share/)tlpkg/*)
+				;;
+
+			(.deps)
+				while read; do
+					deps+=("$REPLY")
+				done < "$i/$f"
+				;;
+
+			(+([^/]))
+				# Files sitting in the base dir.
+				# Often junk, but maybe not, eg. check for +x for "bin-dir ."
+				if [ -x "$f" ]; then
+					# FIXME: what if it's executable for others, but not me?
+					args[bin,.]=""
+				fi
+				;;
+		esac
+	done < <(find "$i" -type f -print0)
+}
+
+function do_output_real {
+	local i="$1"
+	echo "#%Module"
+	echo ""
+	echo "description {"
+	echo -e "\t# Auto-generated for $i"
+	for j in "${!args[@]}"; do
+		t="${j%%,*}"
+		d="${j#*,}"
+		echo -e "\t${prefix[$j]}$t-dir ${args[$j]} $d"
+	done
+	for j in "${deps[@]}"; do
+		echo -e "\tsoft-prereq $j"
+	done
+	echo -e "\t# End of generated description"
+	echo "}"
+	echo ""
+}
+
+function do_output {
+	local i="$1"
+	local out="$2"
+	if [ "${#args[@]}" -eq 0 ]; then
+		echo "WARNING: no content for $i, skipping..." 1>&2
+	elif [ $# -eq 1 ]; then
+		do_output_real "$i"
+	else
+		do_output_real "$i" > "$out"
+	fi
+}
+
+for i in "${list[@]}"; do
+	outfname="$i/syzfile"
+	if [ "$stdout" = y ]; then
+		do_search "$i"
+		do_output "$i"
+	elif [ "$force" = y ]; then
+		do_search "$i"
+		do_output "$i" "$outfname"
+	elif [ -e "$outfname" ]; then
+		if [ "$update" = y ]; then
+			echo "WARNING: Update not yet implemented, skipping $i"
+		else
+			echo "WARNING: $outfname already exists, skipping..."
+		fi
+	else
+		do_search "$i"
+		do_output "$i" "$outfname"
+	fi
+done
+
+
