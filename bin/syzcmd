@@ -29,51 +29,78 @@ pkgversion=""
 
 function get_basedir {
 	basedir="$(shwrapnel run "$1" show "$2" 2>&1 | sed -n -e 's, $,,' -e 's,^setenv\s\+[A-Za-z0-9_]\+_BASE\s\+,,p')"
+	if [ "$basedir" = "" ]; then
+		echo -n "echo 'Error: no such package as \"$2\"' 1>&2; false;"
+		return 1
+	else
+		return 0
+	fi
 }
 
 function get_version {
-	get_basedir "$@"
-	version="${basedir##*/}"
+	if get_basedir "$@"; then
+		version="${basedir##*/}"
+		return 0
+	else
+		version=""
+		return 1
+	fi
 }
 
 function get_pkgname {
-	get_version "$@"
-	basedir="${basedir%/$version}"
-	pkgname="${basedir##*/}"
+	if get_version "$@"; then
+		basedir="${basedir%/$version}"
+		pkgname="${basedir##*/}"
+		return 0
+	else
+		pkgname=""
+		return 1
+	fi
 }
 
 function get_pkgversion {
-	get_pkgname "$@"
-	pkgversion="$pkgname/$version"
+	if get_pkgname "$@"; then
+		pkgversion="$pkgname/$version"
+		return 0
+	else
+		pkgversion=""
+		return 1
+	fi
 }
 
 
 # FIXME: handle any options that are given (eg. -t, -v, -s, ...)
 
 if [ "$2" = "basedir" ]; then
-	get_basedir "$1" "$3"
-	echo -n "echo '$basedir';"
+	if get_basedir "$1" "$3"; then
+		echo -n "echo '$basedir';"
+	fi
 
 elif [ "$2" = "syzfile" ]; then
-	get_basedir "$1" "$3"
-	echo -n "echo '$basedir/syzfile';"
+	if get_basedir "$1" "$3"; then
+		echo -n "echo '$basedir/syzfile';"
+	fi
 
 elif [ "$2" = "pkgversion" ]; then
-	get_pkgversion "$1" "$3"
-	echo -n "echo '$pkgversion';"
+	if get_pkgversion "$1" "$3"; then
+		echo -n "echo '$pkgversion';"
+	fi
 
 elif [ "$2" = "version" ]; then
-	get_version "$1" "$3"
-	echo -n "echo '$version';"
+	if get_version "$1" "$3"; then
+		echo -n "echo '$version';"
+	fi
 
 elif [ "$2" = "pkgname" ]; then
-	get_pkgname "$1" "$3"
-	echo -n "echo '$pkgname';"
+	if get_pkgname "$1" "$3"; then
+		echo -n "echo '$pkgname';"
+	fi
 
 elif [ "$2" = "show" ]; then
 	if [ "$3" = "-r" -o "$3" = "--raw" ]; then
-		get_basedir "$1" "$4"
-		echo "cat '$basedir'/syzfile;"
+		if get_basedir "$1" "$4"; then
+			echo "cat '$basedir'/syzfile;"
+		fi
 	else
 		shwrapnel launch
 	fi
