@@ -22,9 +22,61 @@
 
 shwrapnel set_real_cmd modulecmd
 
+basedir=""
+version=""
+pkgname=""
+pkgversion=""
+
+function get_basedir {
+	basedir="$(shwrapnel run "$1" show "$2" 2>&1 | sed -n -e 's, $,,' -e 's,^setenv\s\+[A-Za-z0-9_]\+_BASE\s\+,,p')"
+}
+
+function get_version {
+	get_basedir "$@"
+	version="${basedir##*/}"
+}
+
+function get_pkgname {
+	get_version "$@"
+	basedir="${basedir%/$version}"
+	pkgname="${basedir##*/}"
+}
+
+function get_pkgversion {
+	get_pkgname "$@"
+	pkgversion="$pkgname/$version"
+}
+
+
 # FIXME: handle any options that are given (eg. -t, -v, -s, ...)
+
 if [ "$2" = "basedir" ]; then
-	shwrapnel run "$1" show "$3" 2>&1 | sed -n -e 's,$,;,' -e 's,^setenv\s\+[A-Za-z0-9_]\+_BASE\s\+,echo ,p'
+	get_basedir "$1" "$3"
+	echo -n "echo '$basedir';"
+
+elif [ "$2" = "syzfile" ]; then
+	get_basedir "$1" "$3"
+	echo -n "echo '$basedir/syzfile';"
+
+elif [ "$2" = "pkgversion" ]; then
+	get_pkgversion "$1" "$3"
+	echo -n "echo '$pkgversion';"
+
+elif [ "$2" = "version" ]; then
+	get_version "$1" "$3"
+	echo -n "echo '$version';"
+
+elif [ "$2" = "pkgname" ]; then
+	get_pkgname "$1" "$3"
+	echo -n "echo '$pkgname';"
+
+elif [ "$2" = "show" ]; then
+	if [ "$3" = "-r" -o "$3" = "--raw" ]; then
+		get_basedir "$1" "$4"
+		echo "cat '$basedir'/syzfile;"
+	else
+		shwrapnel launch
+	fi
 
 elif [ "$2" = "cd" ]; then
 	if [ $# -eq 2 ]; then
@@ -38,7 +90,7 @@ elif [ "$2" = "cd" ]; then
 		exit 0
 	fi
 
-	basedir="$(syz basedir "$3")"
+	get_basedir "$@"
 	if [ "$basedir" = "" ]; then
 		echo "syzcmd: Error: \"$3\" not found" 1>&2
 		exit 1
