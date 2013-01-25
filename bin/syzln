@@ -48,6 +48,9 @@ function process_tree {
 					fi
 				fi
 			done
+			# Find and delete any broken symlinks.
+			find -L .sf -type l -delete
+			# FIXME: remove any directories that have now been left empty.
 			echo "" 1>&2
 		fi
 	done
