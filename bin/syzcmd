@@ -30,7 +30,7 @@ pkgversion=""
 function get_basedir {
 	basedir="$(shwrapnel run "$1" show "$2" 2>&1 | sed -n -e 's, $,,' -e 's,^setenv\s\+[A-Za-z0-9_]\+_BASE\s\+,,p')"
 	if [ "$basedir" = "" ]; then
-		echo -n "echo 'Error: no such package as \"$2\"' 1>&2; false;"
+		echo -n "echo 'syzcmd: Error: unable to find package \"$2\"' 1>&2; false;"
 		return 1
 	else
 		return 0
