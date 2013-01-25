@@ -72,35 +72,67 @@ function get_pkgversion {
 # FIXME: handle any options that are given (eg. -t, -v, -s, ...)
 
 if [ "$2" = "basedir" ]; then
-	if get_basedir "$1" "$3"; then
-		echo -n "echo '$basedir';"
-	fi
+	shtype="$1"
+	shift 2
+	for i; do
+		if get_basedir "$shtype" "$i"; then
+			echo -n "echo '$basedir';"
+		fi
+	done
 
 elif [ "$2" = "syzfile" ]; then
-	if get_basedir "$1" "$3"; then
-		echo -n "echo '$basedir/syzfile';"
-	fi
+	shtype="$1"
+	shift 2
+	for i; do
+		if get_basedir "$shtype" "$i"; then
+			echo -n "echo '$basedir/syzfile';"
+		fi
+	done
 
 elif [ "$2" = "pkgversion" ]; then
-	if get_pkgversion "$1" "$3"; then
-		echo -n "echo '$pkgversion';"
-	fi
+	shtype="$1"
+	shift 2
+	for i; do
+		if get_pkgversion "$shtype" "$i"; then
+			echo -n "echo '$pkgversion';"
+		fi
+	done
 
 elif [ "$2" = "version" ]; then
-	if get_version "$1" "$3"; then
-		echo -n "echo '$version';"
-	fi
+	shtype="$1"
+	shift 2
+	for i; do
+		if get_version "$shtype" "$i"; then
+			echo -n "echo '$version';"
+		fi
+	done
 
 elif [ "$2" = "pkgname" ]; then
-	if get_pkgname "$1" "$3"; then
-		echo -n "echo '$pkgname';"
-	fi
+	shtype="$1"
+	shift 2
+	for i; do
+		if get_pkgname "$shtype" "$i"; then
+			echo -n "echo '$pkgname';"
+		fi
+	done
 
 elif [ "$2" = "show" ]; then
-	if [ "$3" = "-r" -o "$3" = "--raw" ]; then
-		if get_basedir "$1" "$4"; then
-			echo "cat '$basedir'/syzfile;"
-		fi
+	shtype="$1"
+	shift 2
+	if [ "$1" = "-r" -o "$1" = "--raw" ]; then
+		shift
+		for i; do
+			if get_basedir "$shtype" "$i"; then
+				echo "cat '$basedir'/syzfile;"
+			fi
+		done
+	elif [ "$1" = "-R" -o "$1" = "--abs-raw" ]; then
+		shift
+		for i; do
+			if get_basedir "$shtype" "$i"; then
+				echo "sed -e 's,\(^\s*[a-z]*-dir\>.*\s\+\)\([^/][^ 	]*\)$,\1\2 $basedir/\2,' '$basedir'/syzfile;"
+			fi
+		done
 	else
 		shwrapnel launch
 	fi
