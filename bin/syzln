@@ -42,7 +42,10 @@ function process_tree {
 					echo -ne "#%Module1.0\nset ModulesVersion "\""$target"\""\n" > .sf/"$pkgname"/.version
 					echo "Set $pkgname default to $target"
 				else
-					ln -svf ../../"$j"/syzfile .sf/"$pkgname/$version"
+					if ! ln -svf ../../"$j"/syzfile .sf/"$pkgname/$version"; then
+						echo "Error, aborting"
+						return 1
+					fi
 				fi
 			done
 			echo "" 1>&2
