@@ -117,10 +117,8 @@ elif [ "$2" = "cd" ]; then
 		exit 0
 	fi
 
-	get_basedir "$@"
-	if [ "$basedir" = "" ]; then
-		echo "syzcmd: Error: \"$3\" not found" 1>&2
-		exit 1
+	if ! get_basedir "$1" "$3"; then
+		exit $?
 	fi
 	if [ $# -eq 4 ]; then
 		basedir="$basedir/$4"
