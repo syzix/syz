@@ -20,7 +20,7 @@
 
 . syzlib || { echo "$0: Error: cannot source syzlib" 1>&2 ; exit 1; }
 
-if [ $# -eq 0 ]; then
+if [ "$1" = "-h" -o "$1" = "--help" ]; then
 	echo "Usage: $0 [ <path> ... ]"
 	exit 0
 fi
