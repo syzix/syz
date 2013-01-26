@@ -161,6 +161,8 @@ function do_search {
 			(sw/.sf/*)
 				prefix[syzix,sw]="#"
 				args[syzix,sw]=""
+				# Temporary: eventually the following should be done as part of syzix-dir.
+				args[modules,sw/.sf]=""
 				;;
 
 			# ???
@@ -194,6 +196,8 @@ function do_search {
 	if [ -e "$i"/sw/.sf ]; then
 		prefix[syzix,sw]="#"
 		args[syzix,sw]=""
+		# Temporary: eventually the following should be done as part of syzix-dir.
+		args[modules,sw/.sf]=""
 	fi
 }
 
