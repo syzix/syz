@@ -190,7 +190,7 @@ function do_search {
 				fi
 				;;
 		esac
-	done < <(find "$i" -type f -print0)
+	done < <(find -H "$i" -type f -print0)
 }
 
 function do_output_real {
