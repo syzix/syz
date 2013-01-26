@@ -20,9 +20,16 @@
 
 . syzlib || { echo "$0: Error: cannot source syzlib" 1>&2 ; exit 1; }
 
+shopt -s extglob
+
+ignore_hashed=n
+
 if [ "$1" = "-h" -o "$1" = "--help" ]; then
-	echo "Usage: $0 [ <path> ... ]"
+	echo "Usage: $0 [ <options> ] [ <path> ... ]"
 	exit 0
+elif [ "$1" = "--ignore-hashed" ]; then
+	ignore_hashed=y
+	shift
 fi
 
 function process_tree {
@@ -34,6 +41,22 @@ function process_tree {
 			mkdir -p .sf
 			for j in */*/syzfile; do
 				j="${j%/syzfile}"
+				if [ "$ignore_hashed" = y ]; then
+					case "$j" in
+						(*-+([a-z0-9]))
+							jj="${j%-+([a-z0-9])}"
+							for k in "$jj"?(-+([0-9])); do
+								if [ -L "$k" -a "${k%/*}/$(readlink "$k")" = "$j" ]; then
+									# So we have a symlink that has the trimmed name
+									# (or the trimmed name followed by an integer
+									# suffix), and it points to this place.
+									# So this is one that we ignore, as requested.
+									continue 2
+								fi
+							done
+							;;
+					esac
+				fi
 				pkgname="${j%%/*}"
 				version="${j##*/}"
 				mkdir -p .sf/"$pkgname"
