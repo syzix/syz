@@ -137,6 +137,9 @@ elif [ "$2" = "show" ]; then
 		shwrapnel launch
 	fi
 
+elif [ "$2" = "list" ]; then
+	shwrapnel launch 2>&1 | sed -e 's,Currently Loaded Modulefiles,Currently Loaded Syzfiles,' 1>&2
+
 elif [ "$2" = "cd" ]; then
 	if [ $# -eq 2 ]; then
 		# The user has done "syz cd", probably absent-mindedly trying to get back to their home dir.
