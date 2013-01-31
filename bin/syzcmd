@@ -69,6 +69,24 @@ function get_pkgversion {
 }
 
 
+function regular_list {
+	shwrapnel launch "$1" "$2" 2>&1 | sed -e 's,Currently \(Loaded\|Inactive\) Modulefiles,Currently \1 Syzfiles,' 1>&2
+}
+
+function provided_list {
+	orig_LOADEDMODULES="$LOADEDMODULES"
+	orig__LMFILES_="$_LMFILES_"
+	orig_INACTIVEMODULES="$INACTIVEMODULES"
+	LOADEDMODULES="$PROVIDEDMODULES"
+	_LMFILES_="$_PMFILES_"
+	INACTIVEMODULES=""
+	shwrapnel launch "$1" "$2" 2>&1 | sed -e 's,Currently Loaded Modulefiles,Currently Provided Syzfiles,' 1>&2
+	LOADEDMODULES="$orig_LOADEDMODULES"
+	_LMFILES_="$orig__LMFILES_"
+	INACTIVEMODULES="$orig_INACTIVEMODULES"
+}
+
+
 # FIXME: handle any options that are given (eg. -t, -v, -s, ...)
 
 if [ "$2" = "basedir" ]; then
@@ -138,7 +156,15 @@ elif [ "$2" = "show" ]; then
 	fi
 
 elif [ "$2" = "list" ]; then
-	shwrapnel launch 2>&1 | sed -e 's,Currently \(Loaded\|Inactive\) Modulefiles,Currently \1 Syzfiles,' 1>&2
+	if [ $# -eq 3 -a \( "$3" = "-p" -o "$3" = "--provides" \) ]; then
+		provided_list "$@"
+	elif [ $# -eq 3 -a \( "$3" = "-a" -o "$3" = "--all" \) ]; then
+		regular_list "$1" "$2"
+		echo "" 1>&2
+		provided_list "$@"
+	else
+		regular_list "$@"
+	fi
 
 elif [ "$2" = "cd" ]; then
 	if [ $# -eq 2 ]; then
