@@ -80,7 +80,7 @@ function provided_list {
 	LOADEDMODULES="$PROVIDEDMODULES"
 	_LMFILES_="$_PMFILES_"
 	INACTIVEMODULES=""
-	shwrapnel launch "$1" "$2" 2>&1 | sed -e 's,Currently Loaded Modulefiles,Currently Provided Syzfiles,' 1>&2
+	shwrapnel launch "$1" "$2" 2>&1 | sed -e 's,Loaded,Provided,g' -e 's,Modulefiles,Syzfiles,g' 1>&2
 	LOADEDMODULES="$orig_LOADEDMODULES"
 	_LMFILES_="$orig__LMFILES_"
 	INACTIVEMODULES="$orig_INACTIVEMODULES"
