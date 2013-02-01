@@ -229,43 +229,25 @@ elif [ "$2" = "cd" ]; then
 	fi
 	echo "cd $basedir"
 
+elif [ "$2" = "isloaded" -o "$2" = "is-loaded" ]; then
+	shelltype="$1"
+	shift 2
+	get_unloaded "$@" > /dev/null
+
 elif [ "$2" = "ensure" ]; then
 	# Like soft-prereq.
 	# If already loaded, do nothing.
 	# Otherwise, load the default version.
-	old_IFS="$IFS"
-	IFS=:
-	declare -a loadedmodules=($LOADEDMODULES)
-	IFS="$old_IFS"
-
 	shelltype="$1"
 	shift 2
-	declare -a need_to_load=()
-	for ensure; do
-		okay=n
-		for loadedmodule in "${loadedmodules[@]}"; do
-			loadedpkg="${loadedmodule%/*}"
-			if [ "$loadedmodule" = "$ensure" ]; then
-				# is exactly loaded, no problem.
-				okay=y
-				break
-			elif [ "$loadedpkg" = "$ensure" ]; then
-				# also fine
-				okay=y
-				break
-			fi
-		done
-		if [ $okay = n ]; then
-			# No good, so load $ensure
-			need_to_load+=("$ensure")
-		fi
-	done
-
-	if [ "${#need_to_load[@]}" -gt 0 ]; then
+	# The next 2 lines need to be separate.
+	# Otherwise, $? will be the result of the declare command,
+	# not the result of get_unloaded.
+	declare -a need_to_load
+	need_to_load=( $(get_unloaded "$@") )
+	if [ "$?" -gt 0 ]; then
 		shwrapnel launch "$shelltype" load "${need_to_load[@]}" 
 	fi
-
-	exit 0
 
 else
 	shwrapnel launch
