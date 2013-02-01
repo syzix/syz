@@ -87,6 +87,40 @@ function provided_list {
 }
 
 
+function get_unloaded {
+	local old_IFS="$IFS"
+	IFS=:
+	local -a loadedmodules=($LOADEDMODULES $PROVIDEDMODULES)
+	IFS="$old_IFS"
+
+	local -a need_to_load=()
+	local ensure
+	for ensure; do
+		local okay=n
+		local loadedmodule
+		for loadedmodule in "${loadedmodules[@]}"; do
+			loadedpkg="${loadedmodule%/*}"
+			if [ "$loadedmodule" = "$ensure" ]; then
+				# is exactly loaded, no problem.
+				okay=y
+				break
+			elif [ "$loadedpkg" = "$ensure" ]; then
+				# also fine
+				okay=y
+				break
+			fi
+		done
+		if [ $okay = n ]; then
+			# No good, so load $ensure
+			need_to_load+=("$ensure")
+		fi
+	done
+
+	echo "${need_to_load[@]}"
+	return "${#need_to_load[@]}"
+}
+
+
 # FIXME: handle any options that are given (eg. -t, -v, -s, ...)
 
 if [ "$2" = "basedir" ]; then
